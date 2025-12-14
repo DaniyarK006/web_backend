@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMI Calculator</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="calculator-card">
+            <h1>BMI Calculator</h1>
+            <p class="subtitle">Calculate Body Mass Index</p>
+            
+            <form id="bmiForm">
+                <div class="form-group">
+                    <label for="weight">Weight (kg)</label>
+                    <input 
+                        type="number" 
+                        id="weight" 
+                        name="weight" 
+                        step="0.1" 
+                        min="0.1" 
+                        placeholder="Enter your weight in kilograms"
+                        required
+                    >
+                    <div class="number-spinner">
+                        <button type="button" class="spinner-btn up" onclick="incrementValue('weight')"></button>
+                        <button type="button" class="spinner-btn down" onclick="decrementValue('weight')"></button>
+                    </div>
+                    <span class="error-message" id="weightError"></span>
+                </div>
+                <div class="form-group">
+                    <label for="height">Height (cm)</label>
+                    <input 
+                        type="number" 
+                        id="height" 
+                        name="height" 
+                        step="0.1" 
+                        min="0.1" 
+                        placeholder="Enter your height in centimeters"
+                        required
+                    >
+                    <div class="number-spinner">
+                        <button type="button" class="spinner-btn up" onclick="incrementValue('height')"></button>
+                        <button type="button" class="spinner-btn down" onclick="decrementValue('height')"></button>
+                    </div>
+                    <span class="error-message" id="heightError"></span>
+                </div>
+                
+                <button type="submit" class="calculate-btn">Calculate BMI</button>
+            </form>
+            
+            <div id="result" class="result-container" style="display: none;">
+                <h2>Your BMI Result</h2>
+                <div class="bmi-value" id="bmiValue"></div>
+                <div class="bmi-category" id="bmiCategory"></div>
+                <div class="bmi-details">
+                    <p>Weight: <span id="resultWeight"></span> kg</p>
+                    <p>Height: <span id="resultHeight"></span> cm</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+
+    function incrementValue(fieldId) {
+    const input = document.getElementById(fieldId);
+    const step = parseFloat(input.step) || 0.1;
+    const currentValue = parseFloat(input.value) || 0;
+    input.value = (currentValue + step).toFixed(1);
+}
+
+    function decrementValue(fieldId) {
+    const input = document.getElementById(fieldId);
+    const step = parseFloat(input.step) || 0.1;
+    const min = parseFloat(input.min) || 0.1;
+    const currentValue = parseFloat(input.value) || 0;
+    const newValue = currentValue - step;
+    if (newValue >= min) {
+        input.value = newValue.toFixed(1);
+    }
+}
+        const form = document.getElementById('bmiForm');
+        const weightInput = document.getElementById('weight');
+        const heightInput = document.getElementById('height');
+        const weightError = document.getElementById('weightError');
+        const heightError = document.getElementById('heightError');
+        const resultContainer = document.getElementById('result');
+        const bmiValue = document.getElementById('bmiValue');
+        const bmiCategory = document.getElementById('bmiCategory');
+        const resultWeight = document.getElementById('resultWeight');
+        const resultHeight = document.getElementById('resultHeight');
+        
+        // Real-time validation
+        weightInput.addEventListener('input', function() {
+            validateInput(weightInput, weightError);
+        });
+        
+        heightInput.addEventListener('input', function() {
+            validateInput(heightInput, heightError);
+        });
+        
+        function validateInput(input, errorElement) {
+            const value = parseFloat(input.value);
+            if (input.value && (isNaN(value) || value <= 0)) {
+                errorElement.textContent = 'Please enter a positive number';
+                input.style.borderColor = '#ff0080';
+                return false;
+            } else {
+                errorElement.textContent = '';
+                input.style.borderColor = 'rgba(0, 255, 255, 0.2)';
+                return true;
+            }
+        }
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            weightError.textContent = '';
+            heightError.textContent = '';
+            weightInput.style.borderColor = 'rgba(0, 255, 255, 0.2)';
+            heightInput.style.borderColor = 'rgba(0, 255, 255, 0.2)';
+            
+
+            const weight = parseFloat(weightInput.value);
+            const height = parseFloat(heightInput.value);
+            
+            let isValid = true;
+            
+            if (isNaN(weight) || weight <= 0) {
+                weightError.textContent = 'Please enter a valid positive number';
+                weightInput.style.borderColor = '#ff0080';
+                isValid = false;
+            }
+            
+            if (isNaN(height) || height <= 0) {
+                heightError.textContent = 'Please enter a valid positive number';
+                heightInput.style.borderColor = '#ff0080';
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                resultContainer.style.display = 'none';
+                return;
+            }
+            
+            // Send POST request to calculate BMI
+            try {
+                const response = await fetch('/calculate-bmi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        weight: weight,
+                        height: height
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Display result
+                    bmiValue.textContent = data.bmi;
+                    bmiCategory.textContent = data.category;
+                    resultWeight.textContent = data.weight;
+                    resultHeight.textContent = data.height;
+                    
+                    // Apply category class for styling
+                    bmiValue.className = 'bmi-value ' + data.categoryClass;
+                    bmiCategory.className = 'bmi-category ' + data.categoryClass;
+                    
+                    resultContainer.style.display = 'block';
+                    resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
+
